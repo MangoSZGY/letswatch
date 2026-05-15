@@ -9,26 +9,34 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/movies")
+@CrossOrigin(origins = "*")
 public class MovieController {
 
     @Autowired
-    private MovieRepository movieRepository;
+    private MovieRepository repository;
 
-    // Összes film lekérése (READ)
     @GetMapping
     public List<Movie> getAllMovies() {
-        return movieRepository.findAll();
+        return repository.findAll();
     }
 
-    // Új film hozzáadása (CREATE)
     @PostMapping
-    public Movie createMovie(@RequestBody Movie movie) {
-        return movieRepository.save(movie);
+    public Movie saveOrUpdateMovie(@RequestBody Movie movie) {
+        // Duplikáció ellenőrzése cím alapján
+        return repository.findAll().stream()
+                .filter(m -> m.getTitle().equalsIgnoreCase(movie.getTitle()))
+                .findFirst()
+                .map(existingMovie -> {
+                    // Ha létezik, csak frissítjük (pl. Watchlist -> Watched)
+                    existingMovie.setStatus(movie.getStatus());
+                    existingMovie.setRating(movie.getRating());
+                    return repository.save(existingMovie);
+                })
+                .orElseGet(() -> repository.save(movie));
     }
 
-    // Egy film törlése ID alapján (DELETE)
     @DeleteMapping("/{id}")
     public void deleteMovie(@PathVariable Long id) {
-        movieRepository.deleteById(id);
+        repository.deleteById(id);
     }
 }
