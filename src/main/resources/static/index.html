@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LetsWatch - Filmfigyelő</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #141414; color: white; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; }
+        h1 { color: #e50914; text-align: center; }
+
+        /* Kereső rész */
+        .search-box { background: #222; padding: 20px; border-radius: 8px; margin-bottom: 30px; display: flex; gap: 10px; justify-content: center; }
+        input { padding: 10px; border: none; border-radius: 4px; width: 250px; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-search { background: #e50914; color: white; }
+        .btn-save { background: #28a745; color: white; display: none; }
+
+        /* Előnézet */
+        #preview { display: flex; gap: 20px; background: #333; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        #preview img { width: 150px; border-radius: 4px; }
+
+        /* Film kártyák */
+        .movie-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .movie-card { background: #222; border-radius: 8px; overflow: hidden; transition: transform 0.3s; }
+        .movie-card:hover { transform: scale(1.05); }
+        .movie-card img { width: 100%; height: 300px; object-fit: cover; }
+        .movie-card-info { padding: 15px; }
+        .movie-card h4 { margin: 0 0 10px 0; font-size: 1.1rem; }
+        .movie-card p { font-size: 0.8rem; color: #ccc; margin: 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎬 LetsWatch</h1>
+
+    <div class="search-box">
+        <input type="text" id="movieTitle" placeholder="Írd be a film címét (angolul)...">
+        <button class="btn-search" onclick="searchMovie()">Keresés</button>
+        <button id="saveBtn" class="btn-save" onclick="saveMovie()">Mentés az adatbázisba</button>
+    </div>
+
+    <div id="preview">
+        <img id="pPoster" src="" alt="Poster">
+        <div>
+            <h2 id="pTitle"></h2>
+            <p id="pYear"></p>
+            <p id="pPlot"></p>
+        </div>
+    </div>
+
+    <hr style="border: 0.5px solid #333; margin: 40px 0;">
+
+    <div class="movie-grid" id="movieList">
+    </div>
+</div>
+
+<script>
+    const API_KEY = '64ec61f1';
+    let currentMovie = null;
+
+    // 1. Keresés az OMDb-n
+    async function searchMovie() {
+        const title = document.getElementById('movieTitle').value;
+        const response = await fetch(`https://www.omdbapi.com/?t=${title}&apikey=${API_KEY}`);
+        const data = await response.json();
+
+        if (data.Response === "True") {
+            currentMovie = data;
+            document.getElementById('pTitle').innerText = data.Title;
+            document.getElementById('pYear').innerText = `${data.Year} | ${data.Director}`;
+            document.getElementById('pPlot').innerText = data.Plot;
+            document.getElementById('pPoster').src = data.Poster;
+
+            document.getElementById('preview').style.display = 'flex';
+            document.getElementById('saveBtn').style.display = 'block';
+        } else {
+            alert("A film nem található!");
+        }
+    }
+
+    // 2. Mentés a saját Java backendbe
+    async function saveMovie() {
+        if (!currentMovie) return;
+
+        const movieData = {
+            title: currentMovie.Title,
+            director: currentMovie.Director,
+            releaseYear: parseInt(currentMovie.Year),
+            plot: currentMovie.Plot,
+            posterUrl: currentMovie.Poster
+        };
+
+        const response = await fetch('/api/movies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(movieData)
+        });
+
+        if (response.ok) {
+            alert("Film elmentve!");
+            document.getElementById('preview').style.display = 'none';
+            document.getElementById('saveBtn').style.display = 'none';
+            document.getElementById('movieTitle').value = '';
+            loadSavedMovies();
+        }
+    }
+
+    // 3. Elmentett filmek betöltése a Java backendből
+    async function loadSavedMovies() {
+        const response = await fetch('/api/movies');
+        const movies = await response.json();
+        const grid = document.getElementById('movieList');
+        grid.innerHTML = '';
+
+        movies.forEach(movie => {
+            grid.innerHTML += `
+                <div class="movie-card">
+                    <img src="${movie.posterUrl || 'https://via.placeholder.com/300x450?text=No+Poster'}" alt="Poster">
+                    <div class="movie-card-info">
+                        <h4>${movie.title}</h4>
+                        <p>${movie.releaseYear} • ${movie.director}</p>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    loadSavedMovies();
+</script>
+
+</body>
+</html>
