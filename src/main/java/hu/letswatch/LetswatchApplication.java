@@ -5,9 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 public class LetswatchApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(LetswatchApplication.class, args);
-	}
-
+    public static void main(String[] args) {
+        SpringApplication.run(LetswatchApplication.class, args);
+    }
 }
